@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --background: #ffffff;
+    --foreground: #0f172a;
+    --muted: #f1f5f9;
+    --muted-foreground: #64748b;
+    --border: #e2e8f0;
+    --accent: #f8fafc;
+    --primary: #0f172a;
+    --primary-foreground: #f8fafc;
+    --card: #ffffff;
+    --card-foreground: #0f172a;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: #0f172a;
+    --foreground: #f8fafc;
+    --muted: #1e293b;
+    --muted-foreground: #94a3b8;
+    --border: #1e293b;
+    --accent: #1e293b;
+    --primary: #f8fafc;
+    --primary-foreground: #0f172a;
+    --card: #1e293b;
+    --card-foreground: #f8fafc;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@keyframes aurora-1 {
+  0%, 100% { transform: translate(0%, 0%) scale(1); }
+  33% { transform: translate(30%, -20%) scale(1.1); }
+  66% { transform: translate(-20%, 20%) scale(0.9); }
+}
+
+@keyframes aurora-2 {
+  0%, 100% { transform: translate(0%, 0%) scale(1); }
+  33% { transform: translate(-25%, 25%) scale(1.15); }
+  66% { transform: translate(20%, -15%) scale(0.85); }
+}
+
+@keyframes aurora-3 {
+  0%, 100% { transform: translate(0%, 0%) scale(1); }
+  33% { transform: translate(15%, 30%) scale(0.9); }
+  66% { transform: translate(-30%, -20%) scale(1.1); }
+}
+
+.aurora-blob-1 {
+  animation: aurora-1 12s ease-in-out infinite;
+}
+
+.aurora-blob-2 {
+  animation: aurora-2 15s ease-in-out infinite;
+}
+
+.aurora-blob-3 {
+  animation: aurora-3 18s ease-in-out infinite;
+}

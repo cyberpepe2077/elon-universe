@@ -1,0 +1,70 @@
+{
+  "symbol": "TSLA",
+  "quarterly": [
+    {
+      "date": "2Q2023",
+      "frame": "CY2023Q2",
+      "epsActual": 0.78,
+      "epsEstimate": null,
+      "revenue": 24927000000,
+      "netIncome": 2703000000
+    },
+    {
+      "date": "3Q2023",
+      "frame": "CY2023Q3",
+      "epsActual": 0.53,
+      "epsEstimate": null,
+      "revenue": 23350000000,
+      "netIncome": 1853000000
+    },
+    {
+      "date": "1Q2024",
+      "frame": "CY2024Q1",
+      "epsActual": 0.41,
+      "epsEstimate": null,
+      "revenue": 21301000000,
+      "netIncome": 1390000000
+    },
+    {
+      "date": "2Q2024",
+      "frame": "CY2024Q2",
+      "epsActual": 0.4,
+      "epsEstimate": null,
+      "revenue": 25500000000,
+      "netIncome": 1400000000
+    },
+    {
+      "date": "3Q2024",
+      "frame": "CY2024Q3",
+      "epsActual": 0.62,
+      "epsEstimate": null,
+      "revenue": 25182000000,
+      "netIncome": 2173000000
+    },
+    {
+      "date": "1Q2025",
+      "frame": "CY2025Q1",
+      "epsActual": 0.12,
+      "epsEstimate": null,
+      "revenue": 19335000000,
+      "netIncome": 409000000
+    },
+    {
+      "date": "2Q2025",
+      "frame": "CY2025Q2",
+      "epsActual": 0.33,
+      "epsEstimate": null,
+      "revenue": 22496000000,
+      "netIncome": 1172000000
+    },
+    {
+      "date": "3Q2025",
+      "frame": "CY2025Q3",
+      "epsActual": 0.39,
+      "epsEstimate": null,
+      "revenue": 28095000000,
+      "netIncome": 1373000000
+    }
+  ],
+  "updatedAt": "2026-03-01T18:59:15.347Z"
+}

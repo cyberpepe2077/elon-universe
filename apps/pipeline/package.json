@@ -1,0 +1,30 @@
+{
+  "name": "pipeline",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "collect:stock": "tsx src/collect-stock.ts",
+    "backfill:stock": "tsx src/backfill-stock.ts",
+    "aggregate:stock": "tsx src/aggregate-stock.ts",
+    "compute:indicators": "tsx src/compute-indicators.ts",
+    "collect:earnings": "tsx src/collect-earnings.ts",
+    "export:static": "tsx src/export-static.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
+    "@google/generative-ai": "^0.24.1",
+    "@mozilla/readability": "^0.6.0",
+    "jsdom": "^28.1.0",
+    "rss-parser": "^3.13.0"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^27.0.0",
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
