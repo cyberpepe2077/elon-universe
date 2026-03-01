@@ -1414,6 +1414,66 @@ function OptionChainTable({ expiry, currentPrice }: { expiry: OptionExpiry; curr
   )
 }
 
+// ── 옵션 설명 데이터 ──────────────────────────────────────────────────────────
+
+const OPTIONS_INFO = {
+  summary: {
+    headline: '옵션 시장의 핵심 지표 세 가지입니다. 시장 참여자들의 포지션 집중도와 심리를 한눈에 파악할 수 있습니다.',
+    items: [
+      { label: '기초자산 가격', desc: '옵션 수집 시점의 TSLA 현재 주가입니다. 이 가격을 기준으로 콜(상승 베팅)과 풋(하락 베팅)의 ITM/OTM 여부가 결정됩니다.' },
+      { label: 'Put/Call OI 비율 (PCR)', desc: '풋 미결제약정 ÷ 콜 미결제약정. 1보다 크면 풋이 많아 하락 헤지 또는 약세 심리가 강하고, 1보다 작으면 콜이 많아 강세 심리가 우세합니다. 단, 기관의 헤지 목적 풋 매수가 섞여 있어 단순히 방향성 지표로만 해석하면 오류가 생깁니다.' },
+      { label: 'Max Pain (최대 고통 이론)', desc: '만기일에 옵션 매도자(셀러)의 총 손실이 최소가 되는 행사가입니다. 시장 참여자 다수가 프리미엄을 받은 셀러이므로, 만기 접근 시 주가가 이 가격 부근으로 수렴하는 경향이 있다는 이론입니다. 반드시 맞는 것은 아니지만 옵션 거래자들이 참고하는 중요한 레벨입니다.' },
+    ],
+  },
+  oi: {
+    headline: '행사가별 콜(파랑)과 풋(빨강)의 미결제약정(OI) 분포입니다. OI가 집중된 행사가는 시장의 주요 지지·저항 레벨로 작용합니다.',
+    items: [
+      { label: 'OI (Open Interest, 미결제약정)', desc: '아직 청산되지 않은 계약 수의 합계입니다. 거래량(당일 체결)과 달리 누적 포지션을 나타냅니다. OI가 높을수록 해당 행사가에 참여자가 많다는 의미입니다.' },
+      { label: '콜 OI 집중 구간', desc: '특정 행사가에 콜 OI가 크게 몰려 있으면, 그 가격을 넘어서야 콜 매수자가 이익을 봅니다. 많은 셀러가 그 위에 콜을 팔아놨다면 주가 상승 시 헤지 매수(델타 헤지)가 상승을 가속시킬 수 있습니다.' },
+      { label: '풋 OI 집중 구간', desc: '풋 OI가 집중된 행사가는 아래쪽 지지선 역할을 하는 경향이 있습니다. 풋 셀러들이 주가가 그 아래로 내려가지 않기를 원하기 때문에 시장조성자(MM)의 델타 헤지 방향이 하락을 억제할 수 있습니다.' },
+      { label: '현재가 & Max Pain 수직선', desc: '노란 점선은 현재 주가, 보라색 점선은 Max Pain 가격입니다. 현재가와 Max Pain의 거리가 가까울수록 현 주가가 옵션 셀러에게 유리한 구간에 있다는 의미입니다.' },
+    ],
+  },
+  iv: {
+    headline: 'IV Smile(변동성 스마일)은 행사가별 내재변동성(Implied Volatility)을 연결한 곡선입니다. 시장이 각 행사가의 위험을 얼마나 높게 평가하는지 보여줍니다.',
+    items: [
+      { label: '내재변동성 (IV)', desc: '옵션 가격에 내포된 시장의 미래 변동성 예측치입니다. IV가 높을수록 옵션 프리미엄이 비싸고, 시장이 그만큼 불확실성을 크게 봅니다. 예: IV 50%면 연간 기준 50% 범위 내 움직임을 예상하는 것입니다.' },
+      { label: 'Smile vs Skew', desc: '이상적으로는 모든 행사가의 IV가 동일해야 하지만 실제로는 차이가 납니다. 대칭 U자형이면 "스마일", 왼쪽(하락 방향)이 높으면 "스큐(Skew)"라 합니다. 개별 주식 옵션은 보통 왼쪽이 높은 부정적 스큐가 나타납니다(하락 헤지 수요가 많기 때문).' },
+      { label: '콜 IV vs 풋 IV', desc: '같은 행사가에서도 콜과 풋의 IV가 다를 수 있습니다(풋-콜 패리티 이론상 같아야 하지만 수급 차이로 갈립니다). 풋 IV > 콜 IV는 하방 위험에 대한 수요가 더 크다는 신호입니다.' },
+      { label: 'ATM(등가격) 근처 IV', desc: '현재가 근처 행사가의 IV가 가장 중요합니다. 이 값이 낮으면 시장이 당분간 큰 움직임을 기대하지 않는 것이고, 갑자기 높아지면 이벤트(실적 발표, 뉴스 등)에 대한 경계감이 높아진 것입니다.' },
+    ],
+  },
+  chain: {
+    headline: '각 행사가의 콜과 풋 상세 데이터를 나란히 보여주는 표입니다. 현재가 ±20% 범위 내 행사가만 표시합니다.',
+    items: [
+      { label: 'ITM (In The Money, 내가격)', desc: '콜은 행사가 < 현재가, 풋은 행사가 > 현재가일 때 ITM입니다. 즉시 행사하면 이익이 나는 상태. 파란(콜) · 빨간(풋) 배경으로 표시됩니다.' },
+      { label: 'OTM (Out of The Money, 외가격)', desc: '반대로 즉시 행사하면 손실이 나는 상태. 하지만 OTM 옵션은 레버리지 효과가 커 단기 방향성 베팅에 자주 활용됩니다.' },
+      { label: 'OI (미결제약정) vs 거래량', desc: 'OI는 누적 포지션 총합, 거래량은 오늘 하루 체결 건수입니다. 거래량이 OI를 초과하면 신규 포지션이 폭발적으로 생성되고 있다는 의미로, 이상 급등락의 전조가 될 수 있습니다.' },
+      { label: 'Bid/Ask 스프레드', desc: '매수호가(Bid)와 매도호가(Ask)의 차이입니다. 스프레드가 클수록 유동성이 낮아 체결 비용이 커집니다. ATM 근처 옵션이 일반적으로 스프레드가 가장 좁습니다.' },
+      { label: 'IV% (내재변동성)', desc: '해당 계약의 내재변동성을 연율(%)로 표시합니다. 같은 만기라면 OTM으로 갈수록 IV가 높아지는 것이 일반적입니다(스마일 효과).' },
+    ],
+  },
+} as const
+
+type OptionsInfoKey = keyof typeof OPTIONS_INFO
+
+function OptionsSectionInfo({ infoKey }: { infoKey: OptionsInfoKey }) {
+  const info = OPTIONS_INFO[infoKey]
+  return (
+    <div className="px-4 pt-3 pb-4 border-b border-[var(--border)] bg-[var(--accent)]/40 space-y-2">
+      <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">{info.headline}</p>
+      <div className="space-y-2">
+        {info.items.map(item => (
+          <div key={item.label} className="grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-x-3 gap-y-0.5">
+            <span className="text-xs font-medium text-[var(--foreground)]">{item.label}</span>
+            <span className="text-xs text-[var(--muted-foreground)] leading-relaxed">{item.desc}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── 옵션 탭 전체 뷰 ───────────────────────────────────────────────────────────
 
 function OptionsView({ dark }: { dark: boolean }) {
@@ -1421,6 +1481,8 @@ function OptionsView({ dark }: { dark: boolean }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [selectedExpiry, setSelectedExpiry] = useState<string | null>(null)
+  const [infoOpen, setInfoOpen] = useState<Partial<Record<OptionsInfoKey, boolean>>>({})
+  const toggleInfo = (key: OptionsInfoKey) => setInfoOpen(prev => ({ ...prev, [key]: !prev[key] }))
 
   useEffect(() => {
     setLoading(true)
@@ -1473,7 +1535,16 @@ function OptionsView({ dark }: { dark: boolean }) {
       </div>
 
       {/* 핵심 지표 카드 */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="border border-[var(--border)] rounded-xl overflow-hidden">
+        <div className="px-4 py-2.5 border-b border-[var(--border)] flex items-center gap-1.5">
+          <span className="text-xs font-medium">핵심 지표</span>
+          <button type="button" onClick={() => toggleInfo('summary')} title="지표 설명 보기"
+            className={`p-0.5 rounded transition-colors ${infoOpen.summary ? 'text-[var(--foreground)]' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'}`}>
+            <Info size={12} />
+          </button>
+        </div>
+        {infoOpen.summary && <OptionsSectionInfo infoKey="summary" />}
+      <div className="grid grid-cols-3 gap-3 p-3">
         <div className="border border-[var(--border)] rounded-xl p-3 space-y-0.5">
           <div className="text-xs text-[var(--muted-foreground)]">기초자산 가격</div>
           <div className="text-sm font-semibold tabular-nums">${data.underlyingPrice.toFixed(2)}</div>
@@ -1494,13 +1565,20 @@ function OptionsView({ dark }: { dark: boolean }) {
           <div className="text-xs text-[var(--muted-foreground)]">최근 만기 기준</div>
         </div>
       </div>
+      </div>
 
       {expiry && (
         <>
           {/* OI 분포 차트 */}
           <div className="border border-[var(--border)] rounded-xl overflow-hidden">
             <div className="px-4 py-2.5 border-b border-[var(--border)] flex items-center justify-between">
-              <span className="text-xs font-medium">OI 분포 — 행사가별 미결제약정 ({selectedExpiry})</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-medium">OI 분포 — 행사가별 미결제약정 ({selectedExpiry})</span>
+                <button type="button" onClick={() => toggleInfo('oi')} title="지표 설명 보기"
+                  className={`p-0.5 rounded transition-colors ${infoOpen.oi ? 'text-[var(--foreground)]' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'}`}>
+                  <Info size={12} />
+                </button>
+              </div>
               <div className="flex items-center gap-3">
                 {[['#3b82f6','콜 OI'], ['#ef4444','풋 OI'], ['#facc15','현재가'], ['#a855f7','Max Pain']].map(([c, l]) => (
                   <span key={l} className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
@@ -1510,6 +1588,7 @@ function OptionsView({ dark }: { dark: boolean }) {
                 ))}
               </div>
             </div>
+            {infoOpen.oi && <OptionsSectionInfo infoKey="oi" />}
             <div className="px-4 py-3">
               <OIBarChart expiry={expiry} currentPrice={data.underlyingPrice} maxPain={data.summary.maxPain} dark={dark} />
             </div>
@@ -1518,7 +1597,13 @@ function OptionsView({ dark }: { dark: boolean }) {
           {/* IV Smile 차트 */}
           <div className="border border-[var(--border)] rounded-xl overflow-hidden">
             <div className="px-4 py-2.5 border-b border-[var(--border)] flex items-center justify-between">
-              <span className="text-xs font-medium">IV Smile — 행사가별 내재변동성 ({selectedExpiry})</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-medium">IV Smile — 행사가별 내재변동성 ({selectedExpiry})</span>
+                <button type="button" onClick={() => toggleInfo('iv')} title="지표 설명 보기"
+                  className={`p-0.5 rounded transition-colors ${infoOpen.iv ? 'text-[var(--foreground)]' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'}`}>
+                  <Info size={12} />
+                </button>
+              </div>
               <div className="flex items-center gap-3">
                 {[['#3b82f6','콜 IV'], ['#ef4444','풋 IV'], ['#facc15','현재가']].map(([c, l]) => (
                   <span key={l} className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
@@ -1528,6 +1613,7 @@ function OptionsView({ dark }: { dark: boolean }) {
                 ))}
               </div>
             </div>
+            {infoOpen.iv && <OptionsSectionInfo infoKey="iv" />}
             <div className="px-4 py-3">
               <IVSmileChart expiry={expiry} currentPrice={data.underlyingPrice} dark={dark} />
             </div>
@@ -1535,10 +1621,15 @@ function OptionsView({ dark }: { dark: boolean }) {
 
           {/* 옵션 체인 테이블 */}
           <div className="border border-[var(--border)] rounded-xl overflow-hidden">
-            <div className="px-4 py-2.5 border-b border-[var(--border)]">
+            <div className="px-4 py-2.5 border-b border-[var(--border)] flex items-center gap-1.5">
               <span className="text-xs font-medium">옵션 체인 — {selectedExpiry}</span>
-              <span className="ml-2 text-xs text-[var(--muted-foreground)]">현재가 ±20% · ITM 하이라이트</span>
+              <button type="button" onClick={() => toggleInfo('chain')} title="지표 설명 보기"
+                className={`p-0.5 rounded transition-colors ${infoOpen.chain ? 'text-[var(--foreground)]' : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'}`}>
+                <Info size={12} />
+              </button>
+              <span className="ml-1 text-xs text-[var(--muted-foreground)]">현재가 ±20% · ITM 하이라이트</span>
             </div>
+            {infoOpen.chain && <OptionsSectionInfo infoKey="chain" />}
             <div className="overflow-x-auto">
               <OptionChainTable expiry={expiry} currentPrice={data.underlyingPrice} />
             </div>
