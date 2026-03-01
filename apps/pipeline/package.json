@@ -11,6 +11,7 @@
     "aggregate:stock": "tsx src/aggregate-stock.ts",
     "compute:indicators": "tsx src/compute-indicators.ts",
     "collect:earnings": "tsx src/collect-earnings.ts",
+    "collect:options": "tsx src/collect-options.ts",
     "export:static": "tsx src/export-static.ts",
     "typecheck": "tsc --noEmit"
   },

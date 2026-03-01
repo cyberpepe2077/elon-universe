@@ -54,6 +54,13 @@ async function exportStockData(symbol: string) {
     console.log(`[내보내기] ${symbol} 실적 데이터`)
   }
 
+  // options.json
+  const optionsPath = join(dir, 'options.json')
+  if (existsSync(optionsPath)) {
+    await copyFile(optionsPath, join(outDir, 'options.json'))
+    console.log(`[내보내기] ${symbol} 옵션 데이터`)
+  }
+
   // 날짜별 캔들 → candles/YYYY-MM-DD.json + dates.json + all-candles.json
   const dateFiles = (await readdir(dir).catch(() => [] as string[]))
     .filter(f => /^\d{4}-\d{2}-\d{2}\.json$/.test(f))

@@ -45,7 +45,7 @@ interface IndicatorSeries {
   series: IndicatorPoint[]
 }
 
-type ViewTab = 'day' | 'all' | 'indicators' | 'earnings'
+type ViewTab = 'day' | 'all' | 'indicators' | 'earnings' | 'options'
 
 interface QuarterData {
   date: string
@@ -59,6 +59,41 @@ interface EarningsSeries {
   symbol: string
   quarterly: QuarterData[]
   updatedAt: string
+}
+
+interface OptionContract {
+  contractSymbol: string
+  strike: number
+  bid: number
+  ask: number
+  lastPrice: number
+  volume: number
+  openInterest: number
+  impliedVolatility: number
+  inTheMoney: boolean
+}
+
+interface OptionExpiry {
+  expiration: string
+  expirationTimestamp: number
+  calls: OptionContract[]
+  puts: OptionContract[]
+}
+
+interface OptionSummary {
+  totalCallOI: number
+  totalPutOI: number
+  putCallRatio: number
+  maxPain: number
+}
+
+interface OptionsSnapshot {
+  symbol: string
+  collectedAt: string
+  underlyingPrice: number
+  expirations: string[]
+  chains: Record<string, OptionExpiry>
+  summary: OptionSummary
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -1090,6 +1125,434 @@ function IndicatorsView({ dark }: { dark: boolean }) {
   )
 }
 
+// ── 옵션 OI 분포 차트 (SVG) ───────────────────────────────────────────────────
+
+function OIBarChart({ expiry, currentPrice, maxPain, dark }: {
+  expiry: OptionExpiry; currentPrice: number; maxPain: number; dark: boolean
+}) {
+  const range = 0.20
+  const minStrike = currentPrice * (1 - range)
+  const maxStrike = currentPrice * (1 + range)
+
+  const allStrikes = [...new Set([
+    ...expiry.calls.map(c => c.strike),
+    ...expiry.puts.map(p => p.strike),
+  ])].sort((a, b) => a - b).filter(s => s >= minStrike && s <= maxStrike)
+
+  if (allStrikes.length < 2) return (
+    <p className="text-xs text-[var(--muted-foreground)] text-center py-4">표시할 데이터가 없습니다</p>
+  )
+
+  const callMap = new Map(expiry.calls.map(c => [c.strike, c.openInterest]))
+  const putMap  = new Map(expiry.puts.map(p => [p.strike, p.openInterest]))
+
+  const maxOI = Math.max(1, ...allStrikes.flatMap(s => [callMap.get(s) ?? 0, putMap.get(s) ?? 0]))
+
+  const W = 800, H = 220
+  const pad = { t: 18, r: 10, b: 32, l: 50 }
+  const innerW = W - pad.l - pad.r
+  const innerH = H - pad.t - pad.b
+
+  const minS = allStrikes[0]
+  const maxS = allStrikes[allStrikes.length - 1]
+  const strikeToX = (s: number) => pad.l + ((s - minS) / (maxS - minS)) * innerW
+  const oiToH = (oi: number) => innerH * (oi / maxOI)
+  const oiToY = (oi: number) => pad.t + innerH - oiToH(oi)
+
+  const avgSpacing = innerW / allStrikes.length
+  const barW = Math.max(2, Math.floor(avgSpacing * 0.38))
+  const textColor = dark ? '#94a3b8' : '#64748b'
+  const labelStep = Math.max(1, Math.floor(allStrikes.length / 12))
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+      {/* 축 */}
+      <line x1={pad.l} y1={pad.t} x2={pad.l} y2={H - pad.b} stroke={textColor} strokeOpacity={0.15} />
+      <line x1={pad.l} y1={H - pad.b} x2={W - pad.r} y2={H - pad.b} stroke={textColor} strokeOpacity={0.15} />
+
+      {/* Y 눈금 */}
+      {[0.5, 1].map(frac => (
+        <text key={frac} x={pad.l - 4} y={pad.t + innerH * (1 - frac) + 4}
+          textAnchor="end" fontSize={8} fill={textColor}>
+          {Math.round(maxOI * frac / 1000)}k
+        </text>
+      ))}
+
+      {/* OI 막대 */}
+      {allStrikes.map((strike, i) => {
+        const callOI = callMap.get(strike) ?? 0
+        const putOI  = putMap.get(strike) ?? 0
+        const cx = strikeToX(strike)
+        return (
+          <g key={strike}>
+            {callOI > 0 && (
+              <rect x={cx - barW} y={oiToY(callOI)} width={barW - 0.5} height={oiToH(callOI)}
+                fill="#3b82f6" fillOpacity={0.75} />
+            )}
+            {putOI > 0 && (
+              <rect x={cx + 0.5} y={oiToY(putOI)} width={barW - 0.5} height={oiToH(putOI)}
+                fill="#ef4444" fillOpacity={0.75} />
+            )}
+            {i % labelStep === 0 && (
+              <text x={cx} y={H - 4} textAnchor="middle" fontSize={8} fill={textColor}>
+                ${strike}
+              </text>
+            )}
+          </g>
+        )
+      })}
+
+      {/* 현재가 수직선 */}
+      {currentPrice >= minS && currentPrice <= maxS && (() => {
+        const x = strikeToX(currentPrice)
+        return (
+          <>
+            <line x1={x} y1={pad.t} x2={x} y2={H - pad.b}
+              stroke="#facc15" strokeWidth={1.5} strokeDasharray="4,3" />
+            <text x={x} y={pad.t - 3} textAnchor="middle" fontSize={8} fill="#facc15">
+              ${currentPrice.toFixed(0)}
+            </text>
+          </>
+        )
+      })()}
+
+      {/* Max Pain 수직선 */}
+      {maxPain > 0 && maxPain >= minS && maxPain <= maxS && (() => {
+        const x = strikeToX(maxPain)
+        return (
+          <line x1={x} y1={pad.t} x2={x} y2={H - pad.b}
+            stroke="#a855f7" strokeWidth={1.5} strokeDasharray="4,3" />
+        )
+      })()}
+    </svg>
+  )
+}
+
+// ── IV Smile 차트 (SVG) ───────────────────────────────────────────────────────
+
+function IVSmileChart({ expiry, currentPrice, dark }: {
+  expiry: OptionExpiry; currentPrice: number; dark: boolean
+}) {
+  const range = 0.25
+  const minStrike = currentPrice * (1 - range)
+  const maxStrike = currentPrice * (1 + range)
+
+  const callIVs = expiry.calls
+    .filter(c => c.strike >= minStrike && c.strike <= maxStrike && c.impliedVolatility > 0.001 && c.impliedVolatility < 5)
+    .sort((a, b) => a.strike - b.strike)
+    .map(c => ({ strike: c.strike, iv: c.impliedVolatility * 100 }))
+
+  const putIVs = expiry.puts
+    .filter(p => p.strike >= minStrike && p.strike <= maxStrike && p.impliedVolatility > 0.001 && p.impliedVolatility < 5)
+    .sort((a, b) => a.strike - b.strike)
+    .map(p => ({ strike: p.strike, iv: p.impliedVolatility * 100 }))
+
+  if (callIVs.length < 2 && putIVs.length < 2) return (
+    <p className="text-xs text-[var(--muted-foreground)] text-center py-4">IV 데이터가 충분하지 않습니다</p>
+  )
+
+  const allStrikes = [...new Set([...callIVs.map(x => x.strike), ...putIVs.map(x => x.strike)])].sort((a, b) => a - b)
+  if (allStrikes.length < 2) return null
+
+  const allIVs = [...callIVs.map(x => x.iv), ...putIVs.map(x => x.iv)]
+  const minIV = Math.max(0, Math.min(...allIVs) - 5)
+  const maxIV = Math.min(300, Math.max(...allIVs) + 5)
+
+  const W = 800, H = 180
+  const pad = { t: 10, r: 10, b: 30, l: 45 }
+  const innerW = W - pad.l - pad.r
+  const innerH = H - pad.t - pad.b
+
+  const minS = allStrikes[0]
+  const maxS = allStrikes[allStrikes.length - 1]
+  const strikeToX = (s: number) => pad.l + ((s - minS) / (maxS - minS)) * innerW
+  const ivToY = (iv: number) => pad.t + innerH * (1 - (iv - minIV) / (maxIV - minIV))
+
+  const makePath = (pts: { strike: number; iv: number }[]) =>
+    pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${strikeToX(p.strike).toFixed(1)},${ivToY(p.iv).toFixed(1)}`).join(' ')
+
+  const textColor = dark ? '#94a3b8' : '#64748b'
+  const labelStep = Math.max(1, Math.floor(allStrikes.length / 10))
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+      <line x1={pad.l} y1={pad.t} x2={pad.l} y2={H - pad.b} stroke={textColor} strokeOpacity={0.15} />
+      <line x1={pad.l} y1={H - pad.b} x2={W - pad.r} y2={H - pad.b} stroke={textColor} strokeOpacity={0.15} />
+
+      {[0, 0.5, 1].map(frac => {
+        const iv = minIV + (maxIV - minIV) * frac
+        return (
+          <text key={frac} x={pad.l - 4} y={pad.t + innerH * (1 - frac) + 4}
+            textAnchor="end" fontSize={8} fill={textColor}>
+            {iv.toFixed(0)}%
+          </text>
+        )
+      })}
+
+      {callIVs.length >= 2 && (
+        <>
+          <path d={makePath(callIVs)} fill="none" stroke="#3b82f6" strokeWidth={1.5} />
+          {callIVs.map(p => <circle key={p.strike} cx={strikeToX(p.strike)} cy={ivToY(p.iv)} r={2} fill="#3b82f6" />)}
+        </>
+      )}
+      {putIVs.length >= 2 && (
+        <>
+          <path d={makePath(putIVs)} fill="none" stroke="#ef4444" strokeWidth={1.5} />
+          {putIVs.map(p => <circle key={p.strike} cx={strikeToX(p.strike)} cy={ivToY(p.iv)} r={2} fill="#ef4444" />)}
+        </>
+      )}
+
+      {currentPrice >= minS && currentPrice <= maxS && (
+        <line x1={strikeToX(currentPrice)} y1={pad.t} x2={strikeToX(currentPrice)} y2={H - pad.b}
+          stroke="#facc15" strokeWidth={1} strokeDasharray="4,3" />
+      )}
+
+      {allStrikes.filter((_, i) => i % labelStep === 0).map(s => (
+        <text key={s} x={strikeToX(s)} y={H - 4} textAnchor="middle" fontSize={8} fill={textColor}>
+          ${s}
+        </text>
+      ))}
+    </svg>
+  )
+}
+
+// ── 옵션 체인 테이블 ──────────────────────────────────────────────────────────
+
+function fmtOI(oi: number): string {
+  return oi >= 1000 ? `${(oi / 1000).toFixed(1)}k` : String(oi)
+}
+
+function fmtVol(vol: number): string {
+  if (vol === 0) return '-'
+  return vol >= 1000 ? `${(vol / 1000).toFixed(1)}k` : String(vol)
+}
+
+function OptionChainTable({ expiry, currentPrice }: { expiry: OptionExpiry; currentPrice: number }) {
+  const range = 0.20
+  const minS = currentPrice * (1 - range)
+  const maxS = currentPrice * (1 + range)
+
+  const callMap = new Map(expiry.calls.map(c => [c.strike, c]))
+  const putMap  = new Map(expiry.puts.map(p => [p.strike, p]))
+
+  const allStrikes = [...new Set([
+    ...expiry.calls.map(c => c.strike),
+    ...expiry.puts.map(p => p.strike),
+  ])].sort((a, b) => a - b).filter(s => s >= minS && s <= maxS)
+
+  if (allStrikes.length === 0) return (
+    <p className="text-xs text-[var(--muted-foreground)] p-4 text-center">표시할 데이터 없음 (현재가 ±20% 기준)</p>
+  )
+
+  return (
+    <table className="w-full text-xs min-w-[600px]">
+      <thead>
+        <tr className="border-b border-[var(--border)]">
+          <th colSpan={4} className="text-center py-2 text-blue-500 font-medium text-[11px]">CALLS</th>
+          <th className="text-center py-2 font-semibold text-[11px] bg-[var(--accent)]/30">STRIKE</th>
+          <th colSpan={4} className="text-center py-2 text-red-500 font-medium text-[11px]">PUTS</th>
+        </tr>
+        <tr className="border-b border-[var(--border)] text-[var(--muted-foreground)]">
+          <th className="text-right px-2 py-1.5 font-normal">OI</th>
+          <th className="text-right px-2 py-1.5 font-normal">거래량</th>
+          <th className="text-right px-2 py-1.5 font-normal">IV%</th>
+          <th className="text-right px-2 py-1.5 font-normal">Bid/Ask</th>
+          <th className="text-center px-2 py-1.5 bg-[var(--accent)]/30"></th>
+          <th className="text-left px-2 py-1.5 font-normal">Bid/Ask</th>
+          <th className="text-left px-2 py-1.5 font-normal">IV%</th>
+          <th className="text-left px-2 py-1.5 font-normal">거래량</th>
+          <th className="text-left px-2 py-1.5 font-normal">OI</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-[var(--border)]">
+        {allStrikes.map(strike => {
+          const call = callMap.get(strike)
+          const put  = putMap.get(strike)
+          const isAtm = Math.abs(strike - currentPrice) < currentPrice * 0.006
+          const callItm = call?.inTheMoney ?? false
+          const putItm  = put?.inTheMoney ?? false
+
+          const callBg = callItm ? 'bg-blue-500/8' : ''
+          const putBg  = putItm  ? 'bg-red-500/8'  : ''
+
+          return (
+            <tr key={strike} className={`hover:bg-[var(--accent)]/30 transition-colors ${isAtm ? 'ring-1 ring-inset ring-yellow-400/50' : ''}`}>
+              <td className={`px-2 py-1.5 text-right tabular-nums ${callBg}`}>
+                {call ? fmtOI(call.openInterest) : '-'}
+              </td>
+              <td className={`px-2 py-1.5 text-right tabular-nums ${callBg}`}>
+                {call ? fmtVol(call.volume) : '-'}
+              </td>
+              <td className={`px-2 py-1.5 text-right tabular-nums ${callBg}`}>
+                {call ? `${(call.impliedVolatility * 100).toFixed(0)}%` : '-'}
+              </td>
+              <td className={`px-2 py-1.5 text-right tabular-nums ${callBg}`}>
+                {call ? `${call.bid.toFixed(2)}/${call.ask.toFixed(2)}` : '-'}
+              </td>
+
+              <td className={`px-3 py-1.5 text-center font-mono font-semibold bg-[var(--accent)]/30 ${isAtm ? 'text-yellow-500' : ''}`}>
+                ${strike}
+              </td>
+
+              <td className={`px-2 py-1.5 text-left tabular-nums ${putBg}`}>
+                {put ? `${put.bid.toFixed(2)}/${put.ask.toFixed(2)}` : '-'}
+              </td>
+              <td className={`px-2 py-1.5 text-left tabular-nums ${putBg}`}>
+                {put ? `${(put.impliedVolatility * 100).toFixed(0)}%` : '-'}
+              </td>
+              <td className={`px-2 py-1.5 text-left tabular-nums ${putBg}`}>
+                {put ? fmtVol(put.volume) : '-'}
+              </td>
+              <td className={`px-2 py-1.5 text-left tabular-nums ${putBg}`}>
+                {put ? fmtOI(put.openInterest) : '-'}
+              </td>
+            </tr>
+          )
+        })}
+      </tbody>
+    </table>
+  )
+}
+
+// ── 옵션 탭 전체 뷰 ───────────────────────────────────────────────────────────
+
+function OptionsView({ dark }: { dark: boolean }) {
+  const [data, setData] = useState<OptionsSnapshot | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+  const [selectedExpiry, setSelectedExpiry] = useState<string | null>(null)
+
+  useEffect(() => {
+    setLoading(true)
+    fetch(`${import.meta.env.BASE_URL}data/stock/TSLA/options.json`)
+      .then(r => r.ok ? r.json() as Promise<OptionsSnapshot> : Promise.reject())
+      .then(d => {
+        setData(d)
+        setError(false)
+        setSelectedExpiry(d.expirations[0] ?? null)
+      })
+      .catch(() => setError(true))
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) return (
+    <div className="py-16 text-center text-sm text-[var(--muted-foreground)]">옵션 데이터 불러오는 중...</div>
+  )
+
+  if (error || !data) return (
+    <div className="py-16 text-center space-y-2">
+      <p className="text-sm text-[var(--muted-foreground)]">옵션 데이터를 불러올 수 없습니다.</p>
+      <code className="text-xs bg-[var(--muted)] px-2 py-1 rounded block w-fit mx-auto">
+        pnpm --filter pipeline run collect:options
+      </code>
+      <p className="text-xs text-[var(--muted-foreground)]">또는 Admin에서 "옵션 수집" 실행</p>
+    </div>
+  )
+
+  const expiry = selectedExpiry ? data.chains[selectedExpiry] : null
+  const pcrColor = data.summary.putCallRatio > 1.2 ? 'text-red-500' : data.summary.putCallRatio < 0.8 ? 'text-green-500' : ''
+
+  return (
+    <div className="space-y-4">
+      {/* 만기일 선택 탭 */}
+      <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        {data.expirations.map(exp => (
+          <button
+            key={exp}
+            type="button"
+            onClick={() => setSelectedExpiry(exp)}
+            className={`px-3 py-1.5 rounded-md text-xs font-mono whitespace-nowrap transition-colors ${
+              selectedExpiry === exp
+                ? 'bg-[var(--foreground)] text-[var(--background)]'
+                : 'bg-[var(--accent)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+            }`}
+          >
+            {exp}
+          </button>
+        ))}
+      </div>
+
+      {/* 핵심 지표 카드 */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="border border-[var(--border)] rounded-xl p-3 space-y-0.5">
+          <div className="text-xs text-[var(--muted-foreground)]">기초자산 가격</div>
+          <div className="text-sm font-semibold tabular-nums">${data.underlyingPrice.toFixed(2)}</div>
+          <div className="text-xs text-[var(--muted-foreground)]">TSLA 수집 시점</div>
+        </div>
+        <div className="border border-[var(--border)] rounded-xl p-3 space-y-0.5">
+          <div className="text-xs text-[var(--muted-foreground)]">Put/Call OI 비율</div>
+          <div className={`text-sm font-semibold tabular-nums ${pcrColor}`}>
+            {data.summary.putCallRatio.toFixed(2)}
+          </div>
+          <div className="text-xs text-[var(--muted-foreground)]">
+            콜 {(data.summary.totalCallOI / 1000).toFixed(0)}k · 풋 {(data.summary.totalPutOI / 1000).toFixed(0)}k
+          </div>
+        </div>
+        <div className="border border-[var(--border)] rounded-xl p-3 space-y-0.5">
+          <div className="text-xs text-[var(--muted-foreground)]">Max Pain</div>
+          <div className="text-sm font-semibold tabular-nums text-purple-400">${data.summary.maxPain}</div>
+          <div className="text-xs text-[var(--muted-foreground)]">최근 만기 기준</div>
+        </div>
+      </div>
+
+      {expiry && (
+        <>
+          {/* OI 분포 차트 */}
+          <div className="border border-[var(--border)] rounded-xl overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-[var(--border)] flex items-center justify-between">
+              <span className="text-xs font-medium">OI 분포 — 행사가별 미결제약정 ({selectedExpiry})</span>
+              <div className="flex items-center gap-3">
+                {[['#3b82f6','콜 OI'], ['#ef4444','풋 OI'], ['#facc15','현재가'], ['#a855f7','Max Pain']].map(([c, l]) => (
+                  <span key={l} className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
+                    <span className="w-3 h-0.5 inline-block rounded" style={{ backgroundColor: c }} />
+                    {l}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="px-4 py-3">
+              <OIBarChart expiry={expiry} currentPrice={data.underlyingPrice} maxPain={data.summary.maxPain} dark={dark} />
+            </div>
+          </div>
+
+          {/* IV Smile 차트 */}
+          <div className="border border-[var(--border)] rounded-xl overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-[var(--border)] flex items-center justify-between">
+              <span className="text-xs font-medium">IV Smile — 행사가별 내재변동성 ({selectedExpiry})</span>
+              <div className="flex items-center gap-3">
+                {[['#3b82f6','콜 IV'], ['#ef4444','풋 IV'], ['#facc15','현재가']].map(([c, l]) => (
+                  <span key={l} className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
+                    <span className="w-3 h-0.5 inline-block rounded" style={{ backgroundColor: c }} />
+                    {l}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="px-4 py-3">
+              <IVSmileChart expiry={expiry} currentPrice={data.underlyingPrice} dark={dark} />
+            </div>
+          </div>
+
+          {/* 옵션 체인 테이블 */}
+          <div className="border border-[var(--border)] rounded-xl overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-[var(--border)]">
+              <span className="text-xs font-medium">옵션 체인 — {selectedExpiry}</span>
+              <span className="ml-2 text-xs text-[var(--muted-foreground)]">현재가 ±20% · ITM 하이라이트</span>
+            </div>
+            <div className="overflow-x-auto">
+              <OptionChainTable expiry={expiry} currentPrice={data.underlyingPrice} />
+            </div>
+          </div>
+        </>
+      )}
+
+      <p className="text-xs text-[var(--muted-foreground)] text-right">
+        수집: {new Date(data.collectedAt).toLocaleString('ko-KR')} · 출처: Yahoo Finance
+      </p>
+    </div>
+  )
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function Stock() {
@@ -1158,7 +1621,7 @@ export default function Stock() {
         </div>
         <div className="flex items-center gap-2">
           <div className="flex gap-0.5">
-            {([['indicators', '지표'], ['earnings', '실적'], ['day', '일별'], ['all', '전체']] as const).map(([value, label]) => (
+            {([['indicators', '지표'], ['earnings', '실적'], ['options', '옵션'], ['day', '일별'], ['all', '전체']] as const).map(([value, label]) => (
               <button
                 key={value}
                 type="button"
@@ -1188,6 +1651,8 @@ export default function Stock() {
         <IndicatorsView dark={dark} />
       ) : tab === 'earnings' ? (
         <EarningsView dark={dark} />
+      ) : tab === 'options' ? (
+        <OptionsView dark={dark} />
       ) : loadingDates ? (
         <p className="text-sm text-[var(--muted-foreground)]">불러오는 중...</p>
       ) : dates.length === 0 ? (

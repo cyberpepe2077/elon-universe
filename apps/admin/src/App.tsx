@@ -16,6 +16,7 @@ interface AdminStatus {
   backfill: { running: boolean; log: string[] }
   indicators: { running: boolean; log: string[] }
   earnings: { running: boolean; log: string[] }
+  options: { running: boolean; log: string[] }
   export: { running: boolean; log: string[] }
 }
 
@@ -159,6 +160,7 @@ export default function App() {
     backfill: { running: false, log: [] },
     indicators: { running: false, log: [] },
     earnings: { running: false, log: [] },
+    options: { running: false, log: [] },
     export: { running: false, log: [] },
   })
   const pipelineLogRef = useRef<HTMLPreElement>(null)
@@ -166,6 +168,7 @@ export default function App() {
   const backfillLogRef = useRef<HTMLPreElement>(null)
   const indicatorsLogRef = useRef<HTMLPreElement>(null)
   const earningsLogRef = useRef<HTMLPreElement>(null)
+  const optionsLogRef = useRef<HTMLPreElement>(null)
   const exportLogRef = useRef<HTMLPreElement>(null)
 
   const fetchStatus = useCallback(async () => {
@@ -173,7 +176,7 @@ export default function App() {
     if (r.ok) setStatus(await r.json() as AdminStatus)
   }, [])
 
-  const isAnyRunning = status.pipeline.running || status.stock.running || status.backfill.running || status.indicators.running || status.earnings.running || status.export.running
+  const isAnyRunning = status.pipeline.running || status.stock.running || status.backfill.running || status.indicators.running || status.earnings.running || status.options.running || status.export.running
 
   useEffect(() => {
     void fetchStatus()
@@ -208,6 +211,11 @@ export default function App() {
     }
   }, [status.earnings.log])
   useEffect(() => {
+    if (optionsLogRef.current) {
+      optionsLogRef.current.scrollTop = optionsLogRef.current.scrollHeight
+    }
+  }, [status.options.log])
+  useEffect(() => {
     if (exportLogRef.current) {
       exportLogRef.current.scrollTop = exportLogRef.current.scrollHeight
     }
@@ -230,6 +238,11 @@ export default function App() {
 
   const runEarnings = useCallback(async () => {
     await fetch('/api/admin/run/earnings', { method: 'POST' })
+    void fetchStatus()
+  }, [fetchStatus])
+
+  const runOptions = useCallback(async () => {
+    await fetch('/api/admin/run/options', { method: 'POST' })
     void fetchStatus()
   }, [fetchStatus])
 
@@ -421,7 +434,7 @@ export default function App() {
             <Play size={14} className="text-[var(--muted-foreground)]" />
             파이프라인 제어
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
 
             {/* 전체 파이프라인 */}
             <div className="border border-[var(--border)] rounded-xl p-4 space-y-3">
@@ -497,6 +510,25 @@ export default function App() {
                 onClick={() => void runEarnings()}
               />
               <LogBox lines={status.earnings.log} logRef={earningsLogRef} />
+            </div>
+
+            {/* 옵션 수집 */}
+            <div className="border border-[var(--border)] rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">옵션 수집</span>
+                {status.options.running
+                  ? <span className="flex items-center gap-1 text-xs text-green-500"><span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />실행 중</span>
+                  : <span className="text-xs text-[var(--muted-foreground)]">대기</span>
+                }
+              </div>
+              <p className="text-xs text-[var(--muted-foreground)]">Yahoo Finance → TSLA 옵션 체인 · Max Pain · IV</p>
+              <RunButton
+                label="실행"
+                running={status.options.running}
+                disabled={isAnyRunning}
+                onClick={() => void runOptions()}
+              />
+              <LogBox lines={status.options.log} logRef={optionsLogRef} />
             </div>
           </div>
         </section>

@@ -51,12 +51,14 @@ let stockRunning = false;
 let backfillRunning = false;
 let indicatorsRunning = false;
 let earningsRunning = false;
+let optionsRunning = false;
 let exportRunning = false;
 const pipelineLog: string[] = [];
 const stockLog: string[] = [];
 const backfillLog: string[] = [];
 const indicatorsLog: string[] = [];
 const earningsLog: string[] = [];
+const optionsLog: string[] = [];
 const exportLog: string[] = [];
 
 function appendLog(lines: string[], data: Buffer) {
@@ -234,6 +236,23 @@ app.get("/api/stock/:symbol/indicators", async (c) => {
   }
 });
 
+// 옵션 체인 — 파이프라인(collect:options)이 수집한 options.json 서빙
+app.get("/api/stock/:symbol/options", async (c) => {
+  const symbol = c.req.param("symbol").toUpperCase();
+  const filePath = join(STOCK_DIR, symbol, "options.json");
+  if (!existsSync(filePath)) {
+    return c.json(
+      { error: "옵션 데이터 없음. collect:options 실행 필요" },
+      404,
+    );
+  }
+  try {
+    return c.json(JSON.parse(await readFile(filePath, "utf-8")));
+  } catch {
+    return c.json({ error: "파일 읽기 실패" }, 500);
+  }
+});
+
 // 분기 실적 — 파이프라인(collect:earnings)이 수집한 earnings.json 서빙
 app.get("/api/stock/:symbol/earnings", async (c) => {
   const symbol = c.req.param("symbol").toUpperCase();
@@ -278,6 +297,7 @@ app.get("/api/admin/status", (c) => {
     backfill: { running: backfillRunning, log: [...backfillLog] },
     indicators: { running: indicatorsRunning, log: [...indicatorsLog] },
     earnings: { running: earningsRunning, log: [...earningsLog] },
+    options: { running: optionsRunning, log: [...optionsLog] },
     export: { running: exportRunning, log: [...exportLog] },
   });
 });
@@ -361,6 +381,27 @@ app.post("/api/admin/run/earnings", (c) => {
   proc.on("close", (code) => {
     earningsRunning = false;
     earningsLog.push(`--- 완료 (exit ${String(code)}) ---`);
+  });
+
+  return c.json({ started: true });
+});
+
+app.post("/api/admin/run/options", (c) => {
+  if (optionsRunning) return c.json({ error: "이미 실행 중" }, 409);
+
+  optionsRunning = true;
+  optionsLog.length = 0;
+
+  const proc = spawn(
+    "pnpm",
+    ["--filter", "pipeline", "run", "collect:options"],
+    { cwd: REPO_ROOT, shell: true },
+  );
+  proc.stdout?.on("data", (d: Buffer) => appendLog(optionsLog, d));
+  proc.stderr?.on("data", (d: Buffer) => appendLog(optionsLog, d));
+  proc.on("close", (code) => {
+    optionsRunning = false;
+    optionsLog.push(`--- 완료 (exit ${String(code)}) ---`);
   });
 
   return c.json({ started: true });
