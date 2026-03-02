@@ -1657,6 +1657,21 @@ export default function Stock() {
   const [loadingCandles, setLoadingCandles] = useState(false)
   const [loadingAll, setLoadingAll] = useState(false)
   const [dark, setDark] = useState(isDark)
+  const [lastPrice, setLastPrice] = useState<number | null>(null)
+  const [prevClose, setPrevClose] = useState<number | null>(null)
+  const [lastPriceDate, setLastPriceDate] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch(`${import.meta.env.BASE_URL}data/stock/TSLA/indicators.json`)
+      .then(r => r.ok ? r.json() as Promise<IndicatorSeries> : Promise.reject())
+      .then(d => {
+        const last = d.series[d.series.length - 1]
+        const prev = d.series[d.series.length - 2]
+        if (last) { setLastPrice(last.close); setLastPriceDate(last.date) }
+        if (prev) setPrevClose(prev.close)
+      })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     const observer = new MutationObserver(() => setDark(isDark()))
@@ -1702,13 +1717,35 @@ export default function Stock() {
     <main className="max-w-5xl mx-auto px-4 py-6">
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <h1 className="text-sm font-semibold">TSLA</h1>
-          {!loadingDates && dates.length > 0 && (
-            <span className="text-xs text-[var(--muted-foreground)]">
-              {dates.length}일 · {totalCandles.toLocaleString()} candles
+        <div>
+          <div className="flex items-baseline gap-3">
+            <span className="text-xs font-medium text-[var(--muted-foreground)] tracking-widest">TSLA</span>
+            <span className="text-3xl font-bold tabular-nums tracking-tight">
+              {lastPrice != null ? `$${lastPrice.toFixed(2)}` : '—'}
             </span>
-          )}
+            {lastPrice != null && prevClose != null && (() => {
+              const diff = lastPrice - prevClose
+              const pct = (diff / prevClose) * 100
+              const up = diff >= 0
+              return (
+                <span className={`text-sm font-semibold tabular-nums ${up ? 'text-green-500' : 'text-red-500'}`}>
+                  {up ? '+' : ''}{diff.toFixed(2)} ({up ? '+' : ''}{pct.toFixed(2)}%)
+                </span>
+              )
+            })()}
+          </div>
+          <div className="flex items-center gap-2 mt-1">
+            {lastPriceDate && (
+              <span className="text-xs text-[var(--muted-foreground)]">
+                {lastPriceDate} 종가 기준 · 실시간 아님
+              </span>
+            )}
+            {!loadingDates && dates.length > 0 && (
+              <span className="text-xs text-[var(--muted-foreground)]">
+                · {dates.length}일 · {totalCandles.toLocaleString()} candles
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex gap-0.5">
