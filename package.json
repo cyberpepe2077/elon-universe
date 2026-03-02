@@ -2,10 +2,10 @@
   "name": "elon",
   "private": true,
   "scripts": {
-    "dev": "pnpm --filter api dev & pnpm --filter web dev",
+    "dev": "pnpm --filter api dev & pnpm --filter web dev & pnpm --filter admin dev",
     "admin": "pnpm --filter api dev & pnpm --filter admin dev",
     "pipeline": "pnpm --filter pipeline start",
     "api": "pnpm --filter api dev",
-    "web": "pnpm --filter web dev"
+    "web": "pnpm --filter api dev & pnpm --filter web dev"
   }
 }
