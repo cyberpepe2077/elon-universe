@@ -29,8 +29,8 @@ export default function Home() {
         <div className="relative z-10 flex flex-col items-center gap-6 max-w-2xl">
           {/* Live tag */}
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[var(--border)] bg-[var(--background)]/60 backdrop-blur-sm text-xs text-[var(--muted-foreground)]">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-            실시간 업데이트
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+            매일 업데이트
           </div>
 
           {/* Title */}
@@ -39,8 +39,9 @@ export default function Home() {
           </h1>
 
           {/* Subtitle */}
-          <p className="text-base sm:text-lg text-[var(--muted-foreground)] leading-relaxed">
-            Tesla · SpaceX · xAI 최신 뉴스를 한국어로
+          <p className="text-base sm:text-lg text-[var(--muted-foreground)] leading-relaxed text-center">
+            Tesla · SpaceX · xAI 뉴스 집계<br />
+            TSLA 주식 · 옵션 분석
           </p>
 
           {/* CTA */}
@@ -112,7 +113,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="border-t border-[var(--border)] py-6 text-center text-xs text-[var(--muted-foreground)]">
-        Elon Universe · Tesla · SpaceX · xAI 뉴스 집계 플랫폼
+        Elon Universe · Tesla · SpaceX · xAI 뉴스 집계 · TSLA 주식 · 옵션 분석
       </footer>
     </>
   )

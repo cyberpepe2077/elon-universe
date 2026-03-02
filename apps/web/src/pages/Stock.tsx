@@ -673,7 +673,7 @@ function EarningsView({ dark }: { dark: boolean }) {
               <Info size={12} />
             </button>
           </div>
-          <span className="text-xs text-[var(--muted-foreground)]">GAAP 희석 EPS · SEC 공시</span>
+          <span className="hidden sm:block text-xs text-[var(--muted-foreground)]">GAAP 희석 EPS · SEC 공시</span>
         </div>
         {infoOpen.eps && <EarningsSectionInfo infoKey="eps" />}
         <div className="px-4 py-3">
@@ -691,7 +691,7 @@ function EarningsView({ dark }: { dark: boolean }) {
               <Info size={12} />
             </button>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-3">
             <span className="flex items-center gap-1.5 text-xs text-[var(--muted-foreground)]">
               <span className="w-3 h-2 inline-block rounded-sm bg-green-500" /> 전분기 증가
             </span>
@@ -716,7 +716,7 @@ function EarningsView({ dark }: { dark: boolean }) {
               <Info size={12} />
             </button>
           </div>
-          <span className="text-xs text-[var(--muted-foreground)]">GAAP 기준</span>
+          <span className="hidden sm:block text-xs text-[var(--muted-foreground)]">GAAP 기준</span>
         </div>
         {infoOpen.netIncome && <EarningsSectionInfo infoKey="netIncome" />}
         <div className="px-4 py-3">
@@ -778,10 +778,10 @@ function EarningsView({ dark }: { dark: boolean }) {
             </tbody>
           </table>
         </div>
-        <div className="px-4 py-2.5 border-t border-[var(--border)] flex items-center justify-between">
+        <div className="px-4 py-2.5 border-t border-[var(--border)] flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between">
           <span className="text-xs text-[var(--muted-foreground)]">QoQ = 전분기 대비 성장률 · Q4는 SEC 공시 방식상 미포함</span>
           <span className="text-xs text-[var(--muted-foreground)]">
-            출처: SEC EDGAR (GAAP 공식 공시) · {new Date(data.updatedAt).toLocaleString('ko-KR')}
+            출처: SEC EDGAR · {new Date(data.updatedAt).toLocaleString('ko-KR')}
           </span>
         </div>
       </div>
@@ -994,7 +994,7 @@ function ChartHeader({ title, items, infoOpen, onInfoToggle }: {
           </button>
         )}
       </div>
-      <div className="flex items-center gap-3">
+      <div className="hidden sm:flex items-center gap-3">
         {items.map(({ color, label }) => (
           <span key={label} className="flex items-center gap-1.5 text-xs text-[var(--muted-foreground)]">
             <span className="w-3 h-0.5 inline-block rounded" style={{ backgroundColor: color }} />
@@ -1579,7 +1579,7 @@ function OptionsView({ dark }: { dark: boolean }) {
                   <Info size={12} />
                 </button>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="hidden sm:flex items-center gap-3">
                 {[['#3b82f6','콜 OI'], ['#ef4444','풋 OI'], ['#facc15','현재가'], ['#a855f7','Max Pain']].map(([c, l]) => (
                   <span key={l} className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
                     <span className="w-3 h-0.5 inline-block rounded" style={{ backgroundColor: c }} />
@@ -1604,7 +1604,7 @@ function OptionsView({ dark }: { dark: boolean }) {
                   <Info size={12} />
                 </button>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="hidden sm:flex items-center gap-3">
                 {[['#3b82f6','콜 IV'], ['#ef4444','풋 IV'], ['#facc15','현재가']].map(([c, l]) => (
                   <span key={l} className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
                     <span className="w-3 h-0.5 inline-block rounded" style={{ backgroundColor: c }} />
@@ -1716,7 +1716,7 @@ export default function Stock() {
   return (
     <main className="max-w-5xl mx-auto px-4 py-6">
       {/* 헤더 */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex items-baseline gap-3">
             <span className="text-xs font-medium text-[var(--muted-foreground)] tracking-widest">TSLA</span>
@@ -1734,7 +1734,7 @@ export default function Stock() {
               )
             })()}
           </div>
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1">
             {lastPriceDate && (
               <span className="text-xs text-[var(--muted-foreground)]">
                 {lastPriceDate} 종가 기준 · 실시간 아님
@@ -1748,13 +1748,13 @@ export default function Stock() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex gap-0.5">
+          <div className="flex gap-0.5 overflow-x-auto scrollbar-none">
             {([['indicators', '지표'], ['earnings', '실적'], ['options', '옵션'], ['day', '일별'], ['all', '전체']] as const).map(([value, label]) => (
               <button
                 key={value}
                 type="button"
                 onClick={() => setTab(value)}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
                   tab === value
                     ? 'bg-[var(--foreground)] text-[var(--background)]'
                     : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)]'
@@ -1767,7 +1767,7 @@ export default function Stock() {
           <button
             type="button"
             onClick={fetchDates}
-            className="p-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
+            className="shrink-0 p-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--accent)] transition-colors"
             title="새로고침"
           >
             <RefreshCw size={13} />
