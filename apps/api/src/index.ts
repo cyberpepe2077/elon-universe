@@ -302,6 +302,28 @@ app.get("/api/admin/status", (c) => {
   });
 });
 
+function triggerExport(reason: string) {
+  if (exportRunning) {
+    exportLog.push(`[자동] ${reason} 완료 → 내보내기 이미 실행 중, 스킵`);
+    return;
+  }
+  exportRunning = true;
+  exportLog.length = 0;
+  exportLog.push(`[자동] ${reason} 완료 → 내보내기 시작`);
+
+  const proc = spawn(
+    "pnpm",
+    ["--filter", "pipeline", "run", "export:static"],
+    { cwd: REPO_ROOT, shell: true },
+  );
+  proc.stdout?.on("data", (d: Buffer) => appendLog(exportLog, d));
+  proc.stderr?.on("data", (d: Buffer) => appendLog(exportLog, d));
+  proc.on("close", (code) => {
+    exportRunning = false;
+    exportLog.push(`--- 완료 (exit ${String(code)}) ---`);
+  });
+}
+
 app.post("/api/admin/run/pipeline", (c) => {
   if (pipelineRunning || stockRunning) {
     return c.json({ error: "이미 실행 중" }, 409);
@@ -316,6 +338,7 @@ app.post("/api/admin/run/pipeline", (c) => {
   proc.on("close", (code) => {
     pipelineRunning = false;
     pipelineLog.push(`--- 완료 (exit ${String(code)}) ---`);
+    if (code === 0) triggerExport("뉴스 수집");
   });
 
   return c.json({ started: true });
@@ -339,6 +362,7 @@ app.post("/api/admin/run/stock", (c) => {
   proc.on("close", (code) => {
     stockRunning = false;
     stockLog.push(`--- 완료 (exit ${String(code)}) ---`);
+    if (code === 0) triggerExport("주식 수집");
   });
 
   return c.json({ started: true });
@@ -360,6 +384,7 @@ app.post("/api/admin/run/indicators", (c) => {
   proc.on("close", (code) => {
     indicatorsRunning = false;
     indicatorsLog.push(`--- 완료 (exit ${String(code)}) ---`);
+    if (code === 0) triggerExport("지표 계산");
   });
 
   return c.json({ started: true });
@@ -381,6 +406,7 @@ app.post("/api/admin/run/earnings", (c) => {
   proc.on("close", (code) => {
     earningsRunning = false;
     earningsLog.push(`--- 완료 (exit ${String(code)}) ---`);
+    if (code === 0) triggerExport("실적 수집");
   });
 
   return c.json({ started: true });
@@ -402,6 +428,7 @@ app.post("/api/admin/run/options", (c) => {
   proc.on("close", (code) => {
     optionsRunning = false;
     optionsLog.push(`--- 완료 (exit ${String(code)}) ---`);
+    if (code === 0) triggerExport("옵션 수집");
   });
 
   return c.json({ started: true });
@@ -453,13 +480,14 @@ app.post("/api/admin/run/backfill", async (c) => {
   proc.on("close", (code) => {
     backfillRunning = false;
     backfillLog.push(`--- 완료 (exit ${String(code)}) ---`);
+    if (code === 0) triggerExport("백필");
   });
 
   return c.json({ started: true });
 });
 
 app.post("/api/admin/cleanup/articles", async (c) => {
-  const body = await c.req.json<{ keepDays?: number }>().catch(() => ({}));
+  const body = await c.req.json<{ keepDays?: number }>().catch(() => ({} as { keepDays?: number }));
   const keepDays = Math.max(1, typeof body.keepDays === "number" ? body.keepDays : 7);
 
   try {
